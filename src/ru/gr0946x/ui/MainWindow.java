@@ -8,15 +8,21 @@ import ru.gr0946x.ui.painting.Painter;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 import static java.lang.Math.*;
 
 public class MainWindow extends JFrame {
 
+    private static final int UNDO_LIMIT = 100;
     private final SelectablePanel mainPanel;
     private final Painter painter;
     private final Fractal mandelbrot;
     private final Converter conv;
+    private final Deque<ViewPortState> undoHistory = new ArrayDeque<>();
     public MainWindow(){
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(800, 650));
@@ -32,6 +38,8 @@ public class MainWindow extends JFrame {
         mainPanel = new SelectablePanel(painter);
         mainPanel.setBackground(Color.WHITE);
         mainPanel.addSelectListener((r)->{
+            if (r.width <= 0 || r.height <= 0) return;
+            saveStateForUndo();
             var xMin = conv.xScr2Crt(r.x);
             var xMax = conv.xScr2Crt(r.x + r.width);
             var yMin = conv.yScr2Crt(r.y + r.height);
@@ -40,8 +48,44 @@ public class MainWindow extends JFrame {
             conv.setYShape(yMin, yMax);
             mainPanel.repaint();
         });
+        configureUndoAction();
         setContent();
     }
+
+    private void saveStateForUndo() {
+        if (undoHistory.size() == UNDO_LIMIT) {
+            undoHistory.removeFirst();
+        }
+        undoHistory.addLast(new ViewPortState(
+                conv.xScr2Crt(0),
+                conv.xScr2Crt(painter.getWidth()),
+                conv.yScr2Crt(painter.getHeight()),
+                conv.yScr2Crt(0)
+        ));
+    }
+
+    private void undoLastAction() {
+        if (undoHistory.isEmpty()) return;
+        var prev = undoHistory.removeLast();
+        conv.setXShape(prev.xMin, prev.xMax);
+        conv.setYShape(prev.yMin, prev.yMax);
+        mainPanel.repaint();
+    }
+
+    private void configureUndoAction() {
+        var rootPane = getRootPane();
+        var inputMap = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        var actionMap = rootPane.getActionMap();
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK), "undo-view");
+        actionMap.put("undo-view", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                undoLastAction();
+            }
+        });
+    }
+
+    private record ViewPortState(double xMin, double xMax, double yMin, double yMax) {}
 
     private void setContent(){
         var gl = new GroupLayout(getContentPane());
