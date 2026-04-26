@@ -1,5 +1,11 @@
 package ru.gr0946x.ui;
 
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.*;
+
+
 import ru.gr0946x.Converter;
 import ru.gr0946x.ui.fractals.Fractal;
 import ru.gr0946x.ui.fractals.Mandelbrot;
@@ -27,6 +33,7 @@ public class MainWindow extends JFrame {
     private final Painter painter;
     private final Fractal mandelbrot;
     private final Converter conv;
+    private final FileManager fileManager;
 
     private final Deque<ViewPortState> undoHistory = new ArrayDeque<>();
     public MainWindow(){
@@ -57,6 +64,8 @@ public class MainWindow extends JFrame {
             mainPanel.repaint();
         });
 
+        fileManager = new FileManager(this, painter, conv, (Mandelbrot)mandelbrot, mainPanel);
+
         configureUndoAction();
         setContent();
         createMenu();
@@ -70,8 +79,86 @@ public class MainWindow extends JFrame {
         openItem.addActionListener(e -> openFile());
         fileMenu.add(openItem);
 
+        fileMenu.addSeparator();
+
+        // Пункт 5а
+        JMenuItem saveFracItem = new JMenuItem("Сохранить как .frac");
+        saveFracItem.addActionListener(e -> saveFracFile());
+        fileMenu.add(saveFracItem);
+
+        // Пункт 5б
+        JMenuItem saveJpgItem = new JMenuItem("Сохранить как JPG");
+        saveJpgItem.addActionListener(e -> saveImageFile("jpg"));
+        fileMenu.add(saveJpgItem);
+
+        // Пункт 5в
+        JMenuItem savePngItem = new JMenuItem("Сохранить как PNG");
+        savePngItem.addActionListener(e -> saveImageFile("png"));
+        fileMenu.add(savePngItem);
+
         menuBar.add(fileMenu);
         setJMenuBar(menuBar);
+    }
+
+    private void saveFracFile() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Сохранить фрактал (.frac)");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Фракталы (*.frac)", "frac"));
+        fileChooser.setSelectedFile(new File("fractal.frac"));
+
+        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            String path = file.getAbsolutePath();
+            if (!path.toLowerCase().endsWith(".frac")) {
+                file = new File(path + ".frac");
+            }
+
+            try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))) {
+                dos.writeDouble(conv.xScr2Crt(0));
+                dos.writeDouble(conv.xScr2Crt(mainPanel.getWidth()));
+                dos.writeDouble(conv.yScr2Crt(mainPanel.getHeight()));
+                dos.writeDouble(conv.yScr2Crt(0));
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Ошибка: " + e.getMessage());
+            }
+        }
+    }
+
+    private void saveImageFile(String format) {
+        JFileChooser fileChooser = new JFileChooser();
+        String upperFormat = format.toUpperCase();
+        fileChooser.setDialogTitle("Сохранить как " + upperFormat);
+        fileChooser.setFileFilter(new FileNameExtensionFilter(upperFormat + " (*." + format + ")", format));
+        fileChooser.setSelectedFile(new File("fractal." + format));
+
+        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            String path = file.getAbsolutePath();
+            if (!path.toLowerCase().endsWith("." + format)) {
+                file = new File(path + "." + format);
+            }
+
+            // Создаём картинку и рисуем на ней фрактал
+            BufferedImage image = new BufferedImage(mainPanel.getWidth(), mainPanel.getHeight() + 30, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2d = image.createGraphics();
+            painter.paint(g2d);
+
+            // Подпись внизу
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, mainPanel.getHeight(), image.getWidth(), 30);
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(String.format("X:[%.6f,%.6f] Y:[%.6f,%.6f]",
+                            conv.xScr2Crt(0), conv.xScr2Crt(mainPanel.getWidth()),
+                            conv.yScr2Crt(mainPanel.getHeight()), conv.yScr2Crt(0)),
+                    10, mainPanel.getHeight() + 20);
+            g2d.dispose();
+
+            try {
+                ImageIO.write(image, format, file);
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Ошибка: " + e.getMessage());
+            }
+        }
     }
 
     private void openFile() {
@@ -83,17 +170,14 @@ public class MainWindow extends JFrame {
         if (result == JFileChooser.APPROVE_OPTION) {
             File file = fileChooser.getSelectedFile();
             try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
-                // Читаем сохраненные параметры
                 double savedXMin = dis.readDouble();
                 double savedXMax = dis.readDouble();
                 double savedYMin = dis.readDouble();
                 double savedYMax = dis.readDouble();
 
-                // Восстанавливаем границы конвертера
                 conv.setXShape(savedXMin, savedXMax);
                 conv.setYShape(savedYMin, savedYMax);
 
-                // Перерисовываем
                 mainPanel.repaint();
 
                 JOptionPane.showMessageDialog(this, "Файл успешно открыт", "Успех", JOptionPane.INFORMATION_MESSAGE);
