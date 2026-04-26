@@ -27,6 +27,7 @@ public class MainWindow extends JFrame {
     private final Painter painter;
     private final Fractal mandelbrot;
     private final Converter conv;
+    private final FileManager fileManager;
 
     private final Deque<ViewPortState> undoHistory = new ArrayDeque<>();
     public MainWindow(){
@@ -57,6 +58,8 @@ public class MainWindow extends JFrame {
             mainPanel.repaint();
         });
 
+        fileManager = new FileManager(this, painter, conv, (Mandelbrot)mandelbrot, mainPanel);
+
         configureUndoAction();
         setContent();
         createMenu();
@@ -69,6 +72,20 @@ public class MainWindow extends JFrame {
         JMenuItem openItem = new JMenuItem("Открыть");
         openItem.addActionListener(e -> openFile());
         fileMenu.add(openItem);
+
+        fileMenu.addSeparator();
+
+        JMenuItem saveFracItem = new JMenuItem("Сохранить как .frac");
+        saveFracItem.addActionListener(e -> fileManager.saveFracFile());
+        fileMenu.add(saveFracItem);
+
+        JMenuItem saveJpgItem = new JMenuItem("Сохранить как JPG");
+        saveJpgItem.addActionListener(e -> fileManager.saveImageFile("jpg"));
+        fileMenu.add(saveJpgItem);
+
+        JMenuItem savePngItem = new JMenuItem("Сохранить как PNG");
+        savePngItem.addActionListener(e -> fileManager.saveImageFile("png"));
+        fileMenu.add(savePngItem);
 
         menuBar.add(fileMenu);
         setJMenuBar(menuBar);
@@ -83,17 +100,14 @@ public class MainWindow extends JFrame {
         if (result == JFileChooser.APPROVE_OPTION) {
             File file = fileChooser.getSelectedFile();
             try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
-                // Читаем сохраненные параметры
                 double savedXMin = dis.readDouble();
                 double savedXMax = dis.readDouble();
                 double savedYMin = dis.readDouble();
                 double savedYMax = dis.readDouble();
 
-                // Восстанавливаем границы конвертера
                 conv.setXShape(savedXMin, savedXMax);
                 conv.setYShape(savedYMin, savedYMax);
 
-                // Перерисовываем
                 mainPanel.repaint();
 
                 JOptionPane.showMessageDialog(this, "Файл успешно открыт", "Успех", JOptionPane.INFORMATION_MESSAGE);
