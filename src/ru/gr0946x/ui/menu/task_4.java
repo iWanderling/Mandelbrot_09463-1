@@ -1,4 +1,4 @@
-package menu;
+package ru.gr0946x.ui.menu;
 
 import javax.swing.*;
 import java.awt.*;
