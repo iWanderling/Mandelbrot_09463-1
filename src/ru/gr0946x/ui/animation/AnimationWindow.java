@@ -9,6 +9,8 @@ import ru.gr0946x.ui.painting.Painter;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AnimationWindow extends JFrame {
 
@@ -80,6 +82,13 @@ public class AnimationWindow extends JFrame {
             public void intervalAdded(javax.swing.event.ListDataEvent e) { update(); }
             public void intervalRemoved(javax.swing.event.ListDataEvent e) { update(); }
             public void contentsChanged(javax.swing.event.ListDataEvent e) { update(); }
+        });
+        btnExportVideo.addActionListener(e -> {
+            List<KeyFrame> frames = new ArrayList<>();
+            for (int i = 0; i < listModel.getSize(); i++) frames.add(listModel.get(i));
+            VideoExporter.export(this, frames, durationSlider.getValue(),
+                    mainPanel.getWidth(), mainPanel.getHeight(),
+                    mandelbrot, colorChooser);
         });
 
         // Выделение области мышью – навигация по фракталу
