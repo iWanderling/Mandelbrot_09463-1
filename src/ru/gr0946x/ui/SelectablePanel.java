@@ -34,17 +34,17 @@ public class SelectablePanel extends PaintPanel{
             public void mouseReleased(MouseEvent e) {
                 super.mouseReleased(e);
                 paintSelectedRect();
-                for (var handler : selectHandlers) {
-                    handler.onSelect(new Rectangle(
-                            rect.getUpperLeft().x,
-                            rect.getUpperLeft().y,
-                            rect.getWidth(),
-                            rect.getHeight()
-                            )
-                    );
+                if (rect != null) { // Добавьте эту проверку
+                    for (var handler : selectHandlers) {
+                        handler.onSelect(new Rectangle(
+                                rect.getUpperLeft().x,
+                                rect.getUpperLeft().y,
+                                rect.getWidth(),
+                                rect.getHeight()
+                        ));
+                    }
+                    rect = null;
                 }
-                rect = null;
-
             }
         });
 
@@ -70,16 +70,31 @@ public class SelectablePanel extends PaintPanel{
     }
 
     private void paintSelectedRect(){
+        Graphics g = getGraphics(); // Получаем свежий Graphics каждый раз
         if (g != null){
             g.setXORMode(Color.WHITE);
             g.setColor(Color.BLACK);
-            g.drawRect(
-                    rect.getUpperLeft().x,
-                    rect.getUpperLeft().y,
-                    rect.getWidth(),
-                    rect.getHeight()
-            );
+            if (rect != null) { // Добавьте проверку
+                g.drawRect(
+                        rect.getUpperLeft().x,
+                        rect.getUpperLeft().y,
+                        rect.getWidth(),
+                        rect.getHeight()
+                );
+            }
             g.setPaintMode();
+            g.dispose(); // Важно! Освобождаем ресурсы
+        }
+    }
+
+    public void setPanningMode(boolean b) {
+        // Включаем/отключаем выделение при панорамировании
+        if (b) {
+            // При панорамировании отключаем выделение прямоугольником
+            if (rect != null) {
+                paintSelectedRect();
+                rect = null;
+            }
         }
     }
 }
