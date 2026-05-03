@@ -7,6 +7,7 @@ import ru.gr0946x.ui.fractals.Fractal;
 import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
+import ru.gr0946x.ui.interaction.PanHandler;
 
 
 import javax.swing.*;
@@ -36,6 +37,7 @@ public class MainWindow extends JFrame {
     private ColorFunction defaultColorFunction;
     private final Deque<ViewPortState> undoHistory = new ArrayDeque<>();
     private FileManager fileManager;
+    private PanHandler panHandler;
 
     public MainWindow(){
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -54,6 +56,11 @@ public class MainWindow extends JFrame {
         painter = new FractalPainter(mandelbrot, conv, defaultColorFunction);
         mainPanel = new SelectablePanel(painter);
         mainPanel.setBackground(Color.WHITE);
+
+        panHandler = new PanHandler(mainPanel, painter, conv);
+        mainPanel.addMouseListener(panHandler);
+        mainPanel.addMouseMotionListener(panHandler);
+        mainPanel.addMouseWheelListener(panHandler);
 
         fileManager = new FileManager(this, painter, conv, (Mandelbrot) mandelbrot, mainPanel);
 

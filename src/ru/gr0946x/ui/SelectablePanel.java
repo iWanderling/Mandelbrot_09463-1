@@ -9,7 +9,6 @@ import java.util.ArrayList;
 public class SelectablePanel extends PaintPanel{
     private SelectedRect rect = null;
     private Graphics g;
-    private boolean panningMode = false;
 
     private final ArrayList<SelectListener> selectHandlers = new ArrayList<>();
     public void addSelectListener(SelectListener listener){
@@ -20,17 +19,12 @@ public class SelectablePanel extends PaintPanel{
         selectHandlers.remove(listener);
     }
 
-    public void setPanningMode(boolean panningMode) {
-        this.panningMode = panningMode;
-    }
-
     public SelectablePanel(Painter painter) {
         super(painter);
         g = getGraphics();
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (panningMode) return;
                 super.mousePressed(e);
                 rect = new SelectedRect(e.getX(), e.getY());
                 paintSelectedRect();
@@ -38,27 +32,25 @@ public class SelectablePanel extends PaintPanel{
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (panningMode) return;
                 super.mouseReleased(e);
                 paintSelectedRect();
-                for (var handler : selectHandlers) {
-                    handler.onSelect(new Rectangle(
-                            rect.getUpperLeft().x,
-                            rect.getUpperLeft().y,
-                            rect.getWidth(),
-                            rect.getHeight()
-                            )
-                    );
+                if (rect != null) { // Добавьте эту проверку
+                    for (var handler : selectHandlers) {
+                        handler.onSelect(new Rectangle(
+                                rect.getUpperLeft().x,
+                                rect.getUpperLeft().y,
+                                rect.getWidth(),
+                                rect.getHeight()
+                        ));
+                    }
+                    rect = null;
                 }
-                rect = null;
-
             }
         });
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (panningMode) return;
                 super.mouseDragged(e);
                 paintSelectedRect();
                 if (rect != null){
@@ -78,16 +70,31 @@ public class SelectablePanel extends PaintPanel{
     }
 
     private void paintSelectedRect(){
+        Graphics g = getGraphics(); // Получаем свежий Graphics каждый раз
         if (g != null){
             g.setXORMode(Color.WHITE);
             g.setColor(Color.BLACK);
-            g.drawRect(
-                    rect.getUpperLeft().x,
-                    rect.getUpperLeft().y,
-                    rect.getWidth(),
-                    rect.getHeight()
-            );
+            if (rect != null) { // Добавьте проверку
+                g.drawRect(
+                        rect.getUpperLeft().x,
+                        rect.getUpperLeft().y,
+                        rect.getWidth(),
+                        rect.getHeight()
+                );
+            }
             g.setPaintMode();
+            g.dispose(); // Важно! Освобождаем ресурсы
+        }
+    }
+
+    public void setPanningMode(boolean b) {
+        // Включаем/отключаем выделение при панорамировании
+        if (b) {
+            // При панорамировании отключаем выделение прямоугольником
+            if (rect != null) {
+                paintSelectedRect();
+                rect = null;
+            }
         }
     }
 }
