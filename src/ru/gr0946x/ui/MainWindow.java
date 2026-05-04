@@ -4,7 +4,6 @@ import ru.gr0946x.Converter;
 import ru.gr0946x.ui.animation.AnimationWindow;
 import ru.gr0946x.ui.fractals.ColorFunction;
 import ru.gr0946x.ui.fractals.Fractal;
-import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
 
@@ -26,6 +25,8 @@ public class MainWindow extends JFrame {
     private static final int UNDO_LIMIT = 100;
     private final SelectablePanel mainPanel;
     private final Painter painter;
+
+    // Использовали интерфейс Fractal вместо класса Mandelbrot[cite: 1]
     private final Fractal mandelbrot;
     private final Converter conv;
     private ColorFunction defaultColorFunction;
@@ -35,9 +36,24 @@ public class MainWindow extends JFrame {
     public MainWindow(){
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(800, 650));
-        mandelbrot = new Mandelbrot();
+
+        // РЕАЛИЗАЦИЯ ЧЕРЕЗ ЛЯМБДУ: Считаем фрактал прямо здесь[cite: 1]
+        mandelbrot = (x, y) -> {
+            double zx = 0, zy = 0;
+            int iter = 0;
+            int maxIter = 500;
+            while (zx * zx + zy * zy <= 4 && iter < maxIter) {
+                double tmp = zx * zx - zy * zy + x;
+                zy = 2 * zx * zy + y;
+                zx = tmp;
+                iter++;
+            }
+            return (float) iter / maxIter;
+        };
+
         conv = new Converter(-2.0, 1.0, -1.0, 1.0);
 
+        // ЦВЕТОВАЯ СХЕМА ЧЕРЕЗ ЛЯМБДУ[cite: 1]
         defaultColorFunction = (value) -> {
             if (value == 1.0) return Color.BLACK;
             var r = (float) abs(sin(5 * value));
@@ -46,11 +62,13 @@ public class MainWindow extends JFrame {
             return new Color(r, g, b);
         };
 
+        // Передаем интерфейсы в паинтер[cite: 1]
         painter = new FractalPainter(mandelbrot, conv, defaultColorFunction);
         mainPanel = new SelectablePanel(painter);
         mainPanel.setBackground(Color.WHITE);
 
-        fileManager = new FileManager(this, painter, conv, (Mandelbrot) mandelbrot, mainPanel);
+        // Убрали приведение типа (Mandelbrot)[cite: 1]
+        fileManager = new FileManager(this, painter, conv, mandelbrot, mainPanel);
 
         mainPanel.addSelectListener((r)->{
             if (r.width <= 0 || r.height <= 0) return;
@@ -168,8 +186,6 @@ public class MainWindow extends JFrame {
         setJMenuBar(menuBar);
     }
 
-    // ==================== СОХРАНЕНИЕ / ОТКРЫТИЕ ====================
-
     private void openFracFile() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Открыть фрактал");
@@ -182,17 +198,13 @@ public class MainWindow extends JFrame {
                 if (!"MANDELBROT_FRACTAL".equals(signature)) {
                     throw new IOException("Неверный формат файла");
                 }
-                dis.readInt(); // version
+                dis.readInt();
 
                 double xMin = dis.readDouble();
                 double xMax = dis.readDouble();
                 double yMin = dis.readDouble();
                 double yMax = dis.readDouble();
-                dis.readInt(); // panel width
-                dis.readInt(); // panel height
-                dis.readInt(); // iterations
-                dis.readInt(); // window width
-                dis.readInt(); // window height
+                dis.readInt(); dis.readInt(); dis.readInt(); dis.readInt(); dis.readInt();
 
                 saveStateForUndo();
                 conv.setXShape(xMin, xMax);
@@ -203,8 +215,6 @@ public class MainWindow extends JFrame {
             }
         }
     }
-
-    // ==================== UNDO ====================
 
     private void saveStateForUndo() {
         if (undoHistory.size() == UNDO_LIMIT) {
@@ -241,25 +251,19 @@ public class MainWindow extends JFrame {
 
     private record ViewPortState(double xMin, double xMax, double yMin, double yMax) {}
 
-    // ==================== ЖЮЛИА ====================
-
     private void openJuliaWindow() {
-        // Вычисляем центр текущей области как точку для Жюлиа
         double cx = (conv.xScr2Crt(0) + conv.xScr2Crt(mainPanel.getWidth())) / 2;
         double cy = (conv.yScr2Crt(mainPanel.getHeight()) + conv.yScr2Crt(0)) / 2;
 
-        JFrame juliaFrame = new JFrame("Множество Жюлиа (c = " +
-                String.format("%.4f", cx) + " + " + String.format("%.4f", cy) + "i)");
+        JFrame juliaFrame = new JFrame("Множество Жюлиа");
         juliaFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         juliaFrame.setSize(600, 600);
 
-        // Создаём панель для Жюлиа
         JuliaPanel juliaPanel = new JuliaPanel(cx, cy);
         juliaFrame.add(juliaPanel);
         juliaFrame.setVisible(true);
     }
 
-    // Внутренний класс для отображения множества Жюлиа
     private class JuliaPanel extends JPanel {
         private final double cx, cy;
         private final int maxIter = 100;
@@ -293,12 +297,8 @@ public class MainWindow extends JFrame {
                     }
 
                     float t = (float) iter / maxIter;
-                    if (t == 1.0f) {
-                        g.setColor(Color.BLACK);
-                    } else {
-                        g.setColor(Color.getHSBColor(t * 0.7f, 0.8f, 1.0f));
-                    }
-                    g.drawLine(i, j, i + 1, j);
+                    g.setColor(t == 1.0f ? Color.BLACK : Color.getHSBColor(t * 0.7f, 0.8f, 1.0f));
+                    g.drawLine(i, j, i, j);
                 }
             }
         }
