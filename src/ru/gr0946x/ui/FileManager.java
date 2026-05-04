@@ -20,14 +20,15 @@ public class FileManager {
     private final JFrame parentFrame;
     private final Painter painter;
     private final Converter conv;
-    private final Mandelbrot mandelbrot;
+    private final ru.gr0946x.ui.fractals.Fractal mandelbrot;
     private final JPanel mainPanel;
 
     private static final String FRAC_SIGNATURE = "MANDELBROT_FRACTAL";
     private static final int FRAC_VERSION = 1;
 
+    // 2. Конструктор
     public FileManager(JFrame parentFrame, Painter painter, Converter conv,
-                       Mandelbrot mandelbrot, JPanel mainPanel) {
+                       ru.gr0946x.ui.fractals.Fractal mandelbrot, JPanel mainPanel) {
         this.parentFrame = parentFrame;
         this.painter = painter;
         this.conv = conv;
@@ -64,7 +65,7 @@ public class FileManager {
                 // Размеры панели и параметры фрактала
                 dos.writeInt(mainPanel.getWidth());
                 dos.writeInt(mainPanel.getHeight());
-                dos.writeInt(mandelbrot.getMaxIterations());
+                dos.writeInt(500);
 
                 // Размеры окна
                 dos.writeInt(parentFrame.getWidth());
@@ -128,7 +129,7 @@ public class FileManager {
                 "X: [%.6f ... %.6f]  Y: [%.6f ... %.6f]  Iter: %d",
                 conv.xScr2Crt(0), conv.xScr2Crt(mainPanel.getWidth()),
                 conv.yScr2Crt(mainPanel.getHeight()), conv.yScr2Crt(0),
-                mandelbrot.getMaxIterations());
+                500);
 
         FontMetrics fm = g2d.getFontMetrics();
         int textX = (image.getWidth() - fm.stringWidth(coords)) / 2;
