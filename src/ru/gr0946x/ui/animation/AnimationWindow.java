@@ -6,6 +6,7 @@ import ru.gr0946x.ui.fractals.ColorFunction;
 import ru.gr0946x.ui.fractals.Fractal;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
+import ru.gr0946x.ui.interaction.PanHandler;
 
 import javax.swing.*;
 import java.awt.*;
@@ -40,13 +41,18 @@ public class AnimationWindow extends JFrame {
         mainPanel = new SelectablePanel(painter);
         mainPanel.setBackground(Color.WHITE);
 
+        PanHandler panHandler = new PanHandler(mainPanel, painter, conv);
+        mainPanel.addMouseListener(panHandler);
+        mainPanel.addMouseMotionListener(panHandler);
+        mainPanel.addMouseWheelListener(panHandler);
+
         // Список ключевых кадров
         listModel = new DefaultListModel<>();
         framesList = new JList<>(listModel);
         framesList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         btnAddFrame = new JButton("+");
-        btnAddFrame.addActionListener(e -> {
+        btnAddFrame.addActionListener(_ -> {
             if (listModel.getSize() == MAX_KEY_FRAMES) {
                 JOptionPane.showMessageDialog(this,
                         "Достигнут лимит количества кадров (" + MAX_KEY_FRAMES + ").");
@@ -62,7 +68,7 @@ public class AnimationWindow extends JFrame {
         });
 
         btnRemoveFrame = new JButton("-");
-        btnRemoveFrame.addActionListener(e -> {
+        btnRemoveFrame.addActionListener(_ -> {
             int idx = framesList.getSelectedIndex();
             if (idx != -1) listModel.remove(idx);
         });
@@ -72,7 +78,7 @@ public class AnimationWindow extends JFrame {
         durationSlider.setPaintTicks(true);
         durationSlider.setPaintLabels(true);
         durationLabel = new JLabel("Длительность: 10 сек");
-        durationSlider.addChangeListener(e ->
+        durationSlider.addChangeListener(_ ->
                 durationLabel.setText("Длительность: " + durationSlider.getValue() + " сек"));
 
         btnExportVideo = new JButton("Сохранить видео...");
@@ -83,7 +89,7 @@ public class AnimationWindow extends JFrame {
             public void intervalRemoved(javax.swing.event.ListDataEvent e) { update(); }
             public void contentsChanged(javax.swing.event.ListDataEvent e) { update(); }
         });
-        btnExportVideo.addActionListener(e -> {
+        btnExportVideo.addActionListener(_ -> {
             List<KeyFrame> frames = new ArrayList<>();
             for (int i = 0; i < listModel.getSize(); i++) frames.add(listModel.get(i));
             VideoExporter.export(this, frames, durationSlider.getValue(),
