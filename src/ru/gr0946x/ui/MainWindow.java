@@ -8,7 +8,8 @@ import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
 
-
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -23,7 +24,7 @@ import java.util.Deque;
 import static java.lang.Math.*;
 
 public class MainWindow extends JFrame {
-
+    private Julia juliaWindow = null;
     private static final int UNDO_LIMIT = 100;
     private final SelectablePanel mainPanel;
     private final Painter painter;
@@ -32,7 +33,7 @@ public class MainWindow extends JFrame {
     private ColorFunction defaultColorFunction;
     private final Deque<ViewPortState> undoHistory = new ArrayDeque<>();
     private FileManager fileManager;
-
+    private boolean juliaMode = false;
     public MainWindow(){
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(800, 650));
@@ -54,6 +55,13 @@ public class MainWindow extends JFrame {
         fileManager = new FileManager(this, painter, conv, (Mandelbrot) mandelbrot, mainPanel);
 
         mainPanel.addSelectListener((r)->{
+            if (juliaWindow != null && juliaWindow.isVisible()) {
+                double cx = conv.xScr2Crt(r.x);
+                double cy = conv.yScr2Crt(r.y);
+                juliaWindow.update(cx, cy);
+                return;
+            }
+            // ... остальной код (зум) без изменений
             if (r.width <= 0 || r.height <= 0) return;
             saveStateForUndo();
             var xMin = conv.xScr2Crt(r.x);
@@ -64,7 +72,17 @@ public class MainWindow extends JFrame {
             conv.setYShape(yMin, yMax);
             mainPanel.repaint();
         });
-
+        mainPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 1) {
+                    double cx = conv.xScr2Crt(e.getX());
+                    double cy = conv.yScr2Crt(e.getY());
+                    new Julia(MainWindow.this, cx, cy).setVisible(true);
+                }
+            }
+        });
+        mainPanel.repaint();
         configureUndoAction();
         setContent();
         createMenuBar();
@@ -133,10 +151,8 @@ public class MainWindow extends JFrame {
             mainPanel.repaint();
         });
 
-        JMenuItem juliaItem = new JMenuItem("Множество Жюлиа");
-        juliaItem.addActionListener(e -> openJuliaWindow());
+
         viewMenu.add(resetZoomItem);
-        viewMenu.add(juliaItem);
 
         // ========== Меню "Экскурсия" ==========
         JMenu animMenu = new JMenu("Экскурсия");
@@ -245,7 +261,7 @@ public class MainWindow extends JFrame {
     // ==================== ЖЮЛИА ====================
 
     private void openJuliaWindow() {
-        // Вычисляем центр текущей области как точку для Жюлиа
+
         double cx = (conv.xScr2Crt(0) + conv.xScr2Crt(mainPanel.getWidth())) / 2;
         double cy = (conv.yScr2Crt(mainPanel.getHeight()) + conv.yScr2Crt(0)) / 2;
         new Julia(this, cx, cy).setVisible(true);
