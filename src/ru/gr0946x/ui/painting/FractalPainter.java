@@ -85,11 +85,33 @@ public class FractalPainter implements Painter {
      * Пересечений нет → дополнительная синхронизация не нужна.
      */
     private void renderStrip(BufferedImage image, int w, int startY, int endY) {
+        // Используем полную область просмотра для расчета итераций
+        double fullXMin = conv.xScr2Crt(0);
+        double fullXMax = conv.xScr2Crt(w);
+        double fullYMin = conv.yScr2Crt(getHeight());
+        double fullYMax = conv.yScr2Crt(0);
+        
+        int maxIterations = 100;
+        if (fractal instanceof ru.gr0946x.ui.fractals.Mandelbrot mandelbrot) {
+            maxIterations = mandelbrot.getMaxIterations(fullXMin, fullXMax, fullYMin, fullYMax);
+            // Вывод с синхронизацией для многопоточности
+            synchronized(System.out) {
+                System.out.printf("Динамические итерации: %d (полная область: [%.4f,%.4f] x [%.4f,%.4f])%n", 
+                    maxIterations, fullXMin, fullXMax, fullYMin, fullYMax);
+            }
+            
+                    }
+        
         for (int j = startY; j < endY; j++) {
             for (int i = 0; i < w; i++) {
                 double x = conv.xScr2Crt(i);
                 double y = conv.yScr2Crt(j);
-                float res = fractal.inSetProbability(x, y);
+                float res;
+                if (fractal instanceof ru.gr0946x.ui.fractals.Mandelbrot mandelbrot) {
+                    res = mandelbrot.inSetProbability(x, y, maxIterations);
+                } else {
+                    res = fractal.inSetProbability(x, y);
+                }
                 Color color = colorFunction.getColor(res);
                 image.setRGB(i, j, color.getRGB());
             }
