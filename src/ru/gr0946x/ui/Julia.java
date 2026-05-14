@@ -12,7 +12,9 @@ public class Julia extends JDialog {
         setLocationRelativeTo(owner);
         add(new JuliaPanel(cReal, cImag, 500, 500));
         pack();
+
     }
+
 
     private static class JuliaPanel extends JPanel {
         private final BufferedImage image;
@@ -20,7 +22,7 @@ public class Julia extends JDialog {
         public JuliaPanel(double cReal, double cImag, int w, int h) {
             setPreferredSize(new Dimension(w, h));
             image = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-
+            //экранные  координаты в комплексную плоскость
             for (int x = 0; x < w; x++) {
                 for (int y = 0; y < h; y++) {
                     double zx = (x - w/2.0) * 4.0 / w;
@@ -30,7 +32,7 @@ public class Julia extends JDialog {
                     int maxIter = 200;
 
                     while (zx*zx + zy*zy < 4 && iter < maxIter) {
-                        double newZx = zx*zx - zy*zy + cReal;
+                        double newZx = zx*zx - zy*zy + cReal; // вещественная
                         double newZy = 2*zx*zy + cImag;
                         zx = newZx;
                         zy = newZy;
@@ -55,5 +57,11 @@ public class Julia extends JDialog {
             super.paintComponent(g);
             g.drawImage(image, 0, 0, null);
         }
+    }
+    public void update(double cReal, double cImag) {
+        JuliaPanel newPanel = new JuliaPanel(cReal, cImag, getWidth(), getHeight());
+        setContentPane(newPanel);
+        revalidate();
+        repaint();
     }
 }

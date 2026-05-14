@@ -8,6 +8,8 @@ import ru.gr0946x.ui.fractals.Mandelbrot;
 import ru.gr0946x.ui.painting.FractalPainter;
 import ru.gr0946x.ui.painting.Painter;
 
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -22,7 +24,7 @@ import java.util.Deque;
 import static java.lang.Math.*;
 
 public class MainWindow extends JFrame {
-
+    private Julia juliaWindow = null;
     private static final int UNDO_LIMIT = 100;
     private final SelectablePanel mainPanel;
     private final Painter painter;
@@ -31,7 +33,7 @@ public class MainWindow extends JFrame {
     private ColorFunction defaultColorFunction;
     private final Deque<ViewPortState> undoHistory = new ArrayDeque<>();
     private FileManager fileManager;
-
+    private boolean juliaMode = false;
     public MainWindow(){
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(800, 650));
@@ -53,6 +55,13 @@ public class MainWindow extends JFrame {
         fileManager = new FileManager(this, painter, conv, (Mandelbrot) mandelbrot, mainPanel);
 
         mainPanel.addSelectListener((r)->{
+            if (juliaWindow != null && juliaWindow.isVisible()) {
+                double cx = conv.xScr2Crt(r.x);
+                double cy = conv.yScr2Crt(r.y);
+                juliaWindow.update(cx, cy);
+                return;
+            }
+            // ... остальной код (зум) без изменений
             if (r.width <= 0 || r.height <= 0) return;
             saveStateForUndo();
             var xMin = conv.xScr2Crt(r.x);
@@ -63,7 +72,17 @@ public class MainWindow extends JFrame {
             conv.setYShape(yMin, yMax);
             mainPanel.repaint();
         });
-
+        mainPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 1) {
+                    double cx = conv.xScr2Crt(e.getX());
+                    double cy = conv.yScr2Crt(e.getY());
+                    new Julia(MainWindow.this, cx, cy).setVisible(true);
+                }
+            }
+        });
+        mainPanel.repaint();
         configureUndoAction();
         setContent();
         createMenuBar();
@@ -132,10 +151,8 @@ public class MainWindow extends JFrame {
             mainPanel.repaint();
         });
 
-        JMenuItem juliaItem = new JMenuItem("Множество Жюлиа");
-        juliaItem.addActionListener(e -> openJuliaWindow());
+
         viewMenu.add(resetZoomItem);
-        viewMenu.add(juliaItem);
 
         // ========== Меню "Экскурсия" ==========
         JMenu animMenu = new JMenu("Экскурсия");
@@ -244,63 +261,10 @@ public class MainWindow extends JFrame {
     // ==================== ЖЮЛИА ====================
 
     private void openJuliaWindow() {
-        // Вычисляем центр текущей области как точку для Жюлиа
+
         double cx = (conv.xScr2Crt(0) + conv.xScr2Crt(mainPanel.getWidth())) / 2;
         double cy = (conv.yScr2Crt(mainPanel.getHeight()) + conv.yScr2Crt(0)) / 2;
-
-        JFrame juliaFrame = new JFrame("Множество Жюлиа (c = " +
-                String.format("%.4f", cx) + " + " + String.format("%.4f", cy) + "i)");
-        juliaFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        juliaFrame.setSize(600, 600);
-
-        // Создаём панель для Жюлиа
-        JuliaPanel juliaPanel = new JuliaPanel(cx, cy);
-        juliaFrame.add(juliaPanel);
-        juliaFrame.setVisible(true);
+        new Julia(this, cx, cy).setVisible(true);
     }
 
-    // Внутренний класс для отображения множества Жюлиа
-    private class JuliaPanel extends JPanel {
-        private final double cx, cy;
-        private final int maxIter = 100;
-        private final double R2 = 4;
-        private final Converter juliaConv;
-
-        JuliaPanel(double cx, double cy) {
-            this.cx = cx;
-            this.cy = cy;
-            juliaConv = new Converter(-2.0, 2.0, -1.5, 1.5);
-            setPreferredSize(new Dimension(600, 600));
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            juliaConv.setWidth(getWidth());
-            juliaConv.setHeight(getHeight());
-
-            for (int i = 0; i < getWidth(); i++) {
-                for (int j = 0; j < getHeight(); j++) {
-                    double zx = juliaConv.xScr2Crt(i);
-                    double zy = juliaConv.yScr2Crt(j);
-                    int iter = 0;
-
-                    while (zx*zx + zy*zy < R2 && iter < maxIter) {
-                        double tmp = zx*zx - zy*zy + cx;
-                        zy = 2*zx*zy + cy;
-                        zx = tmp;
-                        iter++;
-                    }
-
-                    float t = (float) iter / maxIter;
-                    if (t == 1.0f) {
-                        g.setColor(Color.BLACK);
-                    } else {
-                        g.setColor(Color.getHSBColor(t * 0.7f, 0.8f, 1.0f));
-                    }
-                    g.drawLine(i, j, i + 1, j);
-                }
-            }
-        }
-    }
 }
